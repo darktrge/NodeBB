@@ -18,7 +18,6 @@ provision.sh
 .DS_Store
 feeds/recent.rss
 .eslintcache
-.svn
 
 logs/
 
