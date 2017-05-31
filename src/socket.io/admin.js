@@ -8,6 +8,8 @@ var meta = require('../meta');
 var plugins = require('../plugins');
 var widgets = require('../widgets');
 var user = require('../user');
+var userDigest = require('../user/digest');
+var userEmail = require('../user/email');
 var logger = require('../logger');
 var events = require('../events');
 var emailer = require('../emailer');
@@ -16,6 +18,7 @@ var analytics = require('../analytics');
 var websockets = require('../socket.io/index');
 var index = require('./index');
 var getAdminSearchDict = require('../admin/search').getDictionary;
+var utils = require('../../public/src/utils');
 
 var SocketAdmin = {
 	user: require('./admin/user'),
@@ -205,11 +208,39 @@ SocketAdmin.settings.clearSitemapCache = function (socket, data, callback) {
 
 SocketAdmin.email.test = function (socket, data, callback) {
 	var site_title = meta.config.title || 'NodeBB';
-	emailer.send(data.template, socket.uid, {
+	var payload = {
 		subject: '[' + site_title + '] Test Email',
 		site_title: site_title,
 		url: nconf.get('url'),
-	}, callback);
+	};
+
+	switch (data.template) {
+	case 'digest':
+		userDigest.execute({
+			interval: 'day',
+			subscribers: [socket.uid],
+		}, callback);
+		break;
+
+	case 'banned':
+		Object.assign(payload, {
+			username: 'test-user',
+			until: utils.toISOString(Date.now()),
+			reason: 'Test Reason',
+		});
+		emailer.send(data.template, socket.uid, payload, callback);
+		break;
+
+	case 'welcome':
+		userEmail.sendValidationEmail(socket.uid, {
+			force: 1,
+		});
+		break;
+
+	default:
+		emailer.send(data.template, socket.uid, payload, callback);
+		break;
+	}
 };
 
 SocketAdmin.analytics.get = function (socket, data, callback) {
